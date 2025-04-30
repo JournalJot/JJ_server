@@ -5,7 +5,7 @@ import requests
 import flask_bcrypt
 
 app = Flask(__name__)
-cors = CORS(app, origin='*')
+cors = CORS(app, resources={r"*": {"origins": "https://journaljot-o7hvvkiiu-ademola-abdulsamad-afolabis-projects.vercel.app/"}})
 bcrypt = flask_bcrypt.Bcrypt(app)
 
 
@@ -77,9 +77,61 @@ def login_user():
         return jsonify({"message": "Login successful!"})
     else:
         return jsonify({"message": "Invalid password!"}), 401
+
+@app.route("/api/change_password", methods=["POST"])
+def change_password():
+    data = request.get_json()
+    email = data.get("email")
+    new_password = data.get("new_password")
     
+    # Hash the new password
+    new_password_hash = bcrypt.generate_password_hash(new_password).decode('utf-8')
     
+    # Update the password in the database
+    userData.changePassword(email, new_password_hash)
     
+    return jsonify({"message": "Password changed successfully!"})
+
+@app.route("/api/edit_journal", methods=["POST"])
+def edit_journal():
+    data = request.get_json()
+    rowid = data.get("rowid")
+    email = data.get("email")
+    journal_body = data.get("journal_body")
+    journal_title = data.get("journal_title")
+    travel_pic = data.get("travel_pic")
+    country = data.get("country")
+    city = data.get("city")
+    district = data.get("district")
+    latitude = data.get("latitude")
+    longitude = data.get("longitude")
+
+    # Update journal data in the database
+    userData.editJournal(rowid, email, journal_body, journal_title, travel_pic, country, city, district, latitude, longitude)
+    
+    return jsonify({"message": "Journal updated successfully!"})
+
+@app.route("/api/delete_journal", methods=["POST"])
+def delete_journal():
+    data = request.get_json()
+    rowid = data.get("rowid")
+    email = data.get("email")
+
+    # Delete journal data from the database
+    userData.deleteJournal(rowid, email)
+    
+    return jsonify({"message": "Journal deleted successfully!"})
+
+@app.route("/api/delete_user", methods=["POST"])
+def delete_user():
+    data = request.get_json()
+    email = data.get("email")
+
+    # Delete user data from the database
+    userData.deleteUser(email)
+    
+    return jsonify({"message": "User deleted successfully!"})    
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
  

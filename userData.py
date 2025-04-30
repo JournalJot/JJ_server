@@ -53,6 +53,35 @@ def getJournals(Email):
     conn.close()
     return data if data else None
 
+def changePassword(Email, Password):
+    conn = sqlite3.connect('userData.db')
+    c = conn.cursor()
+    c.execute("UPDATE UserData SET Password = ? WHERE Email = ?", (Password, Email))
+    conn.commit()
+    conn.close()
+    
+def editJournal(rowid, email, journal_body, journal_title, travel_pic, country, city, district, latitude, longitude):
+    conn = sqlite3.connect('userData.db')
+    c = conn.cursor()
+    c.execute("UPDATE UserData SET Journal_Body = ?, Journal_Title = ?, Travel_Pic = ?, Country = ?, City = ?, District = ?, Latitude = ?, Longitude = ? WHERE rowid = ? AND Email = ?",(journal_body, journal_title, travel_pic, country, city, district, latitude, longitude, rowid, email))
+    conn.commit()
+    conn.close()
+
+def deleteJournal(rowid, email):
+    conn = sqlite3.connect('userData.db')
+    c = conn.cursor()
+    c.execute("DELETE FROM Journals WHERE rowid = ? AND Email = ?", (rowid, email))
+    conn.commit()
+    conn.close()
+
+def deleteUser(email):
+    conn = sqlite3.connect('userData.db')
+    c = conn.cursor()
+    c.execute("DELETE FROM UserData WHERE Email = ?", (email,))
+    c.execute("DELETE FROM Journals WHERE Email = ?", (email,))
+    conn.commit()
+    conn.close()
+
 def showAllJournals():
     conn = sqlite3.connect('userData.db')
     c = conn.cursor()
