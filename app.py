@@ -5,8 +5,9 @@ import requests
 import flask_bcrypt
 
 app = Flask(__name__)
-cors = CORS(app, resources={r"*": {"origins": "https://journaljot-o7hvvkiiu-ademola-abdulsamad-afolabis-projects.vercel.app/"}})
+CORS(app, resources={r"/api/*": {"origins": "*","allow_headers": "*", "allow_methods": "*", "supports_credentials": True}})
 bcrypt = flask_bcrypt.Bcrypt(app)
+
 
 
 @app.route('/')
