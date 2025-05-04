@@ -5,57 +5,67 @@ import requests
 import flask_bcrypt
 
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "*","allow_headers": "*", "allow_methods": "*", "supports_credentials": True}})
+CORS(app, resources={r"/api/*": {"origins": "*","allow_headers": "*", "allow_methods": "*", "supports_credentials": True, }})
 bcrypt = flask_bcrypt.Bcrypt(app)
 
 
 
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/api/location', methods=['GET'])
+@app.route('/api/location')
 def get_location():
-    api_key = "c2d63ce1a4764c03a7876a7fbe6146eb"
+    api_key = "c1cbfc5ed14e469a9c029e0700e69400"
     ip = request.remote_addr 
     location = requests.get("https://api.ipgeolocation.io/v2/ipgeo?apiKey=" + api_key + "&ip=" + ip + "&output=json")
     if location.status_code != 200:
-        return jsonify({'error': 'Unable to fetch location data'}), 500
-    return location.json()
+        return jsonify({'error': 'Unable to fetch location data'})
+    return jsonify(location.json())
 # Endpoint URL = 'https://api.ipgeolocation.io/v2/ipgeo?apiKey=API_KEY&ip=1.1.1.1&fields=location.city&output=xml'
 
-@app.route('/api/journal', methods=['POST','GET'])
+@app.route('/api/journal', methods=['POST', 'GET'])
 def get_journal():
     if request.method == 'POST':
-        data = request.get_json()
-        email = data.get('email')
-        journal_body = data.get('journal_body')
-        journal_title = data.get('journal_title')
-        travel_pic = data.get('travel_pic')
-        country = data.get('country')
-        city = data.get('city')
-        district = data.get('district')
-        latitude = data.get('latitude')
-        longitude = data.get('longitude')
+        if request.is_json:
+            data = request.get_json() 
+            print(data)
+            email = data.get('email')
+            journal_body = data.get('journal_body')
+            journal_title = data.get('journal_title')
+            travel_pic = data.get('travel_pic')
+            country = data.get('country')
+            city = data.get('city')
+            district = data.get('district')
+            latitude = int(data.get('latitude'))
+            longitude = int(data.get('longitude'))
 
-        # Insert journal data into the database
-        userData.insertJournal(email, journal_body, journal_title, travel_pic, country, city, district, latitude, longitude)
-        
-        return jsonify({'message': 'Journal created successfully!'})
-    
+            # Insert journal data into the database
+            userData.insertJournal(email, journal_body, journal_title, travel_pic, country, city, district, latitude, longitude)
+            
+            return jsonify(data)
+        else:
+            return jsonify({'error': 'Request must be JSON', 'data':request.data}), 400
     elif request.method == 'GET':
-        email = request.args.get('email')
+        # Handle GET request
+        data = request.get_json(force=True)
+        email = data.get('email')
+        if not email:
+            return jsonify({'error': 'Email is required'}), 400
+
         journals = userData.getJournals(email)
         return jsonify(journals)
 
+
 @app.route('/api/user', methods=['POST'])
 def create_user():
-    data = request.get_json()
+    data = request.get_json(force=True)
+
+    # Ensure data is not empty
+    if not data:
+        return jsonify({'error': 'No data provided'})
+
     name = data.get('name')
     email = data.get('email')
     password = data.get('password')
-    if userData.getData(email):
-        return jsonify({'message': 'User already exists!'}), 400
+    if userData.getData(email): 
+        return jsonify({'message': 'User already exists!'})
     
     # Insert user data into the database
     password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
@@ -65,23 +75,23 @@ def create_user():
 
 @app.route("/api/login", methods=["POST"])
 def login_user():
-    data = request.get_json()
+    data = request.get_json(force=True)
     email = data.get("email")
     password = data.get("password")
     
     user = userData.getData(email)
     if not user:
-        return jsonify({"message": "User not found!"}), 404
+        return jsonify({"message": "User not found!"})
     
     # Check if the password is correct
     if bcrypt.check_password_hash(user[2], password):
         return jsonify({"message": "Login successful!"})
     else:
-        return jsonify({"message": "Invalid password!"}), 401
+        return jsonify({"message": "Invalid password!"})
 
 @app.route("/api/change_password", methods=["POST"])
 def change_password():
-    data = request.get_json()
+    data = request.get_json(force=True)
     email = data.get("email")
     new_password = data.get("new_password")
     
@@ -95,7 +105,8 @@ def change_password():
 
 @app.route("/api/edit_journal", methods=["POST"])
 def edit_journal():
-    data = request.get_json()
+    
+    data = request.get_json(force=True)
     rowid = data.get("rowid")
     email = data.get("email")
     journal_body = data.get("journal_body")
@@ -114,7 +125,7 @@ def edit_journal():
 
 @app.route("/api/delete_journal", methods=["POST"])
 def delete_journal():
-    data = request.get_json()
+    data = request.get_json(force=True)
     rowid = data.get("rowid")
     email = data.get("email")
 
@@ -125,7 +136,7 @@ def delete_journal():
 
 @app.route("/api/delete_user", methods=["POST"])
 def delete_user():
-    data = request.get_json()
+    data = request.get_json(force=True)
     email = data.get("email")
 
     # Delete user data from the database
@@ -135,4 +146,3 @@ def delete_user():
 
 if __name__ == '__main__':
     app.run()
- 
