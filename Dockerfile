@@ -12,7 +12,7 @@ WORKDIR /app
 COPY . ./
 
 # Install project dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -r requirements.txt
 
 # Run the web service on container startup.
-CMD ["gunicorn", "main:app"]
+CMD ["gunicorn", "app:app"]
