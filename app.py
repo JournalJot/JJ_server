@@ -14,8 +14,18 @@ bcrypt = flask_bcrypt.Bcrypt(app)
 @app.route('/api/location')
 def get_location():
     api_key = "c1cbfc5ed14e469a9c029e0700e69400"
-    ip = request.remote_addr
-    location = requests.get("https://api.ipgeolocation.io/v2/ipgeo?apiKey=" + api_key + "&ip=" + ip + "&output=json")
+    
+    # Get the client's IP address
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    if ',' in ip:  # If multiple IPs are present, take the first one
+        ip = ip.split(',')[0].strip()
+    
+    # Fetch location data using the client's IP
+    location = requests.get(f"https://api.ipgeolocation.io/v2/ipgeo?apiKey={api_key}&ip={ip}&output=json")
+    
+    if location.status_code != 200:
+        return jsonify({'error': 'Unable to fetch location data'}), location.status_code
+    
     return jsonify(location.json())
 
 
