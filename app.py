@@ -4,6 +4,7 @@ import userData
 import requests
 import flask_bcrypt
 import json
+import logging
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": ["http://localhost:5173"], "supports_credentials": True}})
@@ -15,8 +16,6 @@ def get_location():
     api_key = "c1cbfc5ed14e469a9c029e0700e69400"
     ip = request.remote_addr
     location = requests.get("https://api.ipgeolocation.io/v2/ipgeo?apiKey=" + api_key + "&ip=" + ip + "&output=json")
-    if location.status_code != 200:
-        return jsonify({'error': 'Unable to fetch location data'})
     return jsonify(location.json())
 
 
@@ -212,6 +211,12 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
     response.headers.add('Access-Control-Allow-Credentials', 'true')  # If credentials are needed
     return response
+
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    logging.error(f"Unhandled Exception: {str(e)}")
+    return jsonify({'error': 'An unexpected error occurred', 'details': str(e)}), 500
 
 
 if __name__ == '__main__':
