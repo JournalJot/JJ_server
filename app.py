@@ -13,26 +13,28 @@ bcrypt = flask_bcrypt.Bcrypt(app)
 
 @app.route('/api/location')
 def get_location():
-    api_key = "c1cbfc5ed14e469a9c029e0700e69400"
-    
-    # Get the client's IP address
-    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-    if ',' in ip:  # If multiple IPs are present, take the first one
-        ip = ip.split(',')[0].strip()
-    
-    # Fetch location data using the client's IP
-    location = requests.get(f"https://api.ipgeolocation.io/v2/ipgeo?apiKey={api_key}&ip={ip}&output=json")
-    
-    if location.status_code != 200:
-        return jsonify({'error': 'Unable to fetch location data'}), location.status_code
-    
-    return jsonify(location.json())
+    try:
+        api_key = "c1cbfc5ed14e469a9c029e0700e69400"
+
+        # Get the client's IP address
+        ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        if ',' in ip:  # If multiple IPs are present, take the first one
+            ip = ip.split(',')[0].strip()
+
+        # Fetch location data using the client's IP
+        location = requests.get(f"https://api.ipgeolocation.io/v2/ipgeo?apiKey={api_key}&ip={ip}&output=json")
+
+        if location.status_code != 200:
+            return jsonify({'error': 'Unable to fetch location data', 'error_code': location.status_code}), location.status_code
+
+        return jsonify(location.json())
+    except Exception as e:
+        return jsonify({'error': 'An unexpected error occurred', 'details': str(e), 'error_code': 500}), 500
 
 
 @app.route('/api/journal', methods=['POST', 'GET'])
 def get_journal():
     if request.method == 'POST':
-        # Handle JSON or raw data
         try:
             if request.is_json:
                 data = request.get_json()
@@ -40,7 +42,7 @@ def get_journal():
                 raw_data = request.data.decode('utf-8')
                 data = json.loads(raw_data)
         except Exception as e:
-            return jsonify({'error': 'Invalid JSON format', 'details': str(e)}), 400
+            return jsonify({'error': 'Invalid JSON format', 'details': str(e), 'error_code': 400}), 400
 
         # Extract fields
         email = data.get('email')
@@ -56,21 +58,20 @@ def get_journal():
             latitude = float(data.get('latitude'))
             longitude = float(data.get('longitude'))
         except ValueError as e:
-            return jsonify({'error': 'Invalid latitude or longitude format', 'details': str(e)}), 400
+            return jsonify({'error': 'Invalid latitude or longitude format', 'details': str(e), 'error_code': 400}), 400
 
         # Insert journal data into the database
         userData.insertJournal(email, journal_body, journal_title, travel_pic, country, city, district, latitude, longitude)
-        return jsonify({'message': 'Journal created successfully!'})
+        return jsonify({'message': 'Journal created successfully!', 'error_code': 201}), 201
 
     elif request.method == 'GET':
-        # Handle query parameters
         email = request.args.get('email')  # Get 'email' from query parameters
         if not email:
-            return jsonify({'error': 'Email is required'}), 400
+            return jsonify({'error': 'Email is required', 'error_code': 400}), 400
 
         # Fetch journals from the database
         journals = userData.getJournals(email)
-        return jsonify(journals)
+        return jsonify({'journals': journals, 'error_code': 200}), 200
 
 
 @app.route('/api/user', methods=['POST'])
@@ -82,18 +83,18 @@ def create_user():
             raw_data = request.data.decode('utf-8')
             data = json.loads(raw_data)
     except Exception as e:
-        return jsonify({'error': 'Invalid JSON format', 'details': str(e)}), 400
+        return jsonify({'error': 'Invalid JSON format', 'details': str(e), 'error_code': 400}), 400
 
     name = data.get('name')
     email = data.get('email')
     password = data.get('password')
     if userData.getData(email):
-        return jsonify({'message': 'User already exists!'})
+        return jsonify({'message': 'User already exists!', 'error_code': 409}), 409
 
     # Insert user data into the database
     password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
     userData.insertData(name, email, password_hash)
-    return jsonify({'message': 'User created successfully!'})
+    return jsonify({'message': 'User created successfully!', 'error_code': 201}), 201
 
 
 @app.route("/api/login", methods=["POST"])
@@ -105,7 +106,7 @@ def login_user():
             raw_data = request.data.decode('utf-8')
             data = json.loads(raw_data)
     except Exception as e:
-        return jsonify({'error': 'Invalid JSON format', 'details': str(e)}), 400
+        return jsonify({'error': 'Invalid JSON format', 'details': str(e), 'error_code': 400}), 400
 
     email = data.get("email")
     password = data.get("password")
@@ -113,22 +114,22 @@ def login_user():
     # Retrieve user data from the database
     user = userData.getData(email)
     if not user:
-        return jsonify({"message": "User not found!"})
+        return jsonify({"message": "User not found!", "error_code": 404}), 404
 
     # Get the stored password hash
     password_hash = user[3]
     if not password_hash or not password_hash.startswith("$2b$"):
-        return jsonify({"error": "Invalid password hash in database"}), 500
+        return jsonify({"error": "Invalid password hash in database", "error_code": 500}), 500
 
     # Check if the password is correct
     try:
         if bcrypt.check_password_hash(password_hash, password):
-            return jsonify({"message": "Login successful!"})
+            return jsonify({"message": "Login successful!", "error_code": 200}), 200
         else:
-            return jsonify({"message": "Invalid password!"})
+            return jsonify({"message": "Invalid password!", "error_code": 401}), 401
     except ValueError as e:
         logging.error(f"Error verifying password: {str(e)}")
-        return jsonify({"error": "Password verification failed", "details": str(e)}), 500
+        return jsonify({"error": "Password verification failed", "details": str(e), "error_code": 500}), 500
 
 
 @app.route("/api/change_password", methods=["POST"])
@@ -140,7 +141,7 @@ def change_password():
             raw_data = request.data.decode('utf-8')
             data = json.loads(raw_data)
     except Exception as e:
-        return jsonify({'error': 'Invalid JSON format', 'details': str(e)}), 400
+        return jsonify({'error': 'Invalid JSON format', 'details': str(e), 'error_code': 400}), 400
 
     email = data.get("email")
     new_password = data.get("new_password")
@@ -151,7 +152,7 @@ def change_password():
     # Update the password in the database
     userData.changePassword(email, new_password_hash)
 
-    return jsonify({"message": "Password changed successfully!"})
+    return jsonify({"message": "Password changed successfully!", "error_code": 200}), 200
 
 
 @app.route("/api/edit_journal", methods=["POST"])
@@ -163,7 +164,7 @@ def edit_journal():
             raw_data = request.data.decode('utf-8')
             data = json.loads(raw_data)
     except Exception as e:
-        return jsonify({'error': 'Invalid JSON format', 'details': str(e)}), 400
+        return jsonify({'error': 'Invalid JSON format', 'details': str(e), 'error_code': 400}), 400
 
     rowid = data.get("rowid")
     email = data.get("email")
@@ -179,7 +180,7 @@ def edit_journal():
     # Update journal data in the database
     userData.editJournal(rowid, email, journal_body, journal_title, travel_pic, country, city, district, latitude, longitude)
 
-    return jsonify({"message": "Journal updated successfully!"})
+    return jsonify({"message": "Journal updated successfully!", "error_code": 200}), 200
 
 
 @app.route("/api/delete_journal", methods=["POST"])
@@ -191,7 +192,7 @@ def delete_journal():
             raw_data = request.data.decode('utf-8')
             data = json.loads(raw_data)
     except Exception as e:
-        return jsonify({'error': 'Invalid JSON format', 'details': str(e)}), 400
+        return jsonify({'error': 'Invalid JSON format', 'details': str(e), 'error_code': 400}), 400
 
     rowid = data.get("rowid")
     email = data.get("email")
@@ -199,7 +200,7 @@ def delete_journal():
     # Delete journal data from the database
     userData.deleteJournal(rowid, email)
 
-    return jsonify({"message": "Journal deleted successfully!"})
+    return jsonify({"message": "Journal deleted successfully!", "error_code": 200}), 200
 
 
 @app.route("/api/delete_user", methods=["POST"])
@@ -211,19 +212,20 @@ def delete_user():
             raw_data = request.data.decode('utf-8')
             data = json.loads(raw_data)
     except Exception as e:
-        return jsonify({'error': 'Invalid JSON format', 'details': str(e)}), 400
+        return jsonify({'error': 'Invalid JSON format', 'details': str(e), 'error_code': 400}), 400
 
     email = data.get("email")
 
     # Delete user data from the database
     userData.deleteUser(email)
 
-    return jsonify({"message": "User deleted successfully!"})
+    return jsonify({"message": "User deleted successfully!", "error_code": 200}), 200
+
 
 @app.errorhandler(Exception)
 def handle_exception(e):
     logging.error(f"Unhandled Exception: {str(e)}")
-    return jsonify({'error': 'An unexpected error occurred', 'details': str(e)}), 500
+    return jsonify({'error': 'An unexpected error occurred', 'details': str(e), 'error_code': 500}), 500
 
 
 if __name__ == '__main__':
