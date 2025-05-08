@@ -116,7 +116,7 @@ def login_user():
         return jsonify({"message": "User not found!"})
 
     # Get the stored password hash
-    password_hash = user[2]
+    password_hash = user[3]
     if not password_hash or not password_hash.startswith("$2b$"):
         return jsonify({"error": "Invalid password hash in database"}), 500
 
