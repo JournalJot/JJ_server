@@ -7,7 +7,7 @@ import json
 import logging
 
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": ["http://localhost:5173"], "supports_credentials": True}})
+CORS(app, resources={r"/api/*": {"origins": ["*"], "supports_credentials": True}})
 bcrypt = flask_bcrypt.Bcrypt(app)
 
 
@@ -208,25 +208,6 @@ def delete_user():
     userData.deleteUser(email)
 
     return jsonify({"message": "User deleted successfully!"})
-
-
-@app.before_request
-def log_request():
-    print(f"Request Method: {request.method}")
-    print(f"Request Headers: {dict(request.headers)}")
-    print(f"Request Body: {request.data.decode('utf-8')}")
-
-
-@app.after_request
-def after_request(response):
-    origin = request.headers.get('Origin')
-    if origin == "http://localhost:5173":  # Allow only your frontend's origin
-        response.headers.add('Access-Control-Allow-Origin', origin)
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')  # If credentials are needed
-    return response
-
 
 @app.errorhandler(Exception)
 def handle_exception(e):
