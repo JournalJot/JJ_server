@@ -63,11 +63,12 @@ def get_journal():
         return jsonify({'message': 'Journal created successfully!'})
 
     elif request.method == 'GET':
-        data = request.get_json(force=True)
-        email = data.get('email')
+        # Handle query parameters
+        email = request.args.get('email')  # Get 'email' from query parameters
         if not email:
             return jsonify({'error': 'Email is required'}), 400
 
+        # Fetch journals from the database
         journals = userData.getJournals(email)
         return jsonify(journals)
 
