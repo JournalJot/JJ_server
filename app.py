@@ -110,15 +110,25 @@ def login_user():
     email = data.get("email")
     password = data.get("password")
 
+    # Retrieve user data from the database
     user = userData.getData(email)
     if not user:
         return jsonify({"message": "User not found!"})
 
+    # Get the stored password hash
+    password_hash = user[2]
+    if not password_hash or not password_hash.startswith("$2b$"):
+        return jsonify({"error": "Invalid password hash in database"}), 500
+
     # Check if the password is correct
-    if bcrypt.check_password_hash(user[2], password):
-        return jsonify({"message": "Login successful!"})
-    else:
-        return jsonify({"message": "Invalid password!"})
+    try:
+        if bcrypt.check_password_hash(password_hash, password):
+            return jsonify({"message": "Login successful!"})
+        else:
+            return jsonify({"message": "Invalid password!"})
+    except ValueError as e:
+        logging.error(f"Error verifying password: {str(e)}")
+        return jsonify({"error": "Password verification failed", "details": str(e)}), 500
 
 
 @app.route("/api/change_password", methods=["POST"])
