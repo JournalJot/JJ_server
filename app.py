@@ -50,8 +50,13 @@ def get_journal():
         country = data.get('country')
         city = data.get('city')
         district = data.get('district')
-        latitude = int(data.get('latitude'))
-        longitude = int(data.get('longitude'))
+
+        # Convert latitude and longitude to floats
+        try:
+            latitude = float(data.get('latitude'))
+            longitude = float(data.get('longitude'))
+        except ValueError as e:
+            return jsonify({'error': 'Invalid latitude or longitude format', 'details': str(e)}), 400
 
         # Insert journal data into the database
         userData.insertJournal(email, journal_body, journal_title, travel_pic, country, city, district, latitude, longitude)
