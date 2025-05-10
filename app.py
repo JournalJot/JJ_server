@@ -203,7 +203,7 @@ def delete_journal():
     return jsonify({"message": "Journal deleted successfully!", "error_code": 200}), 200
 
 
-@app.route("/api/delete_user", methods=["POST"])
+@app.route("/api/delete_user", methods=["DELETE"])
 def delete_user():
     try:
         if request.is_json:
