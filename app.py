@@ -5,16 +5,34 @@ import requests
 import flask_bcrypt
 import json
 import logging
+from flask_mail import Mail, Message
+import os
+from dotenv import load_dotenv
+import random
+import string
+
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": ["*"], "supports_credentials": True}})
 bcrypt = flask_bcrypt.Bcrypt(app)
+mail = Mail(app)
 
+
+load_dotenv()
+
+# Load environment variables
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY')
+app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER')
+app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT'))
+app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS') == 'True'
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+app.config['API_GEOLOCATION_KEY'] = os.getenv('API_GEOLOCATION_KEY')
 
 @app.route('/api/location')
 def get_location():
     try:
-        api_key = "c1cbfc5ed14e469a9c029e0700e69400"
+        api_key = app.config['API_GEOLOCATION_KEY']
 
         # Get the client's IP address
         ip = request.headers.get('X-Forwarded-For', request.remote_addr)
@@ -74,27 +92,36 @@ def get_journal():
         return jsonify({'journals': journals, 'error_code': 200}), 200
 
 
-@app.route('/api/user', methods=['POST'])
+@app.route('/api/user', methods=['POST', 'GET'])
 def create_user():
-    try:
-        if request.is_json:
-            data = request.get_json()
-        else:
-            raw_data = request.data.decode('utf-8')
-            data = json.loads(raw_data)
-    except Exception as e:
-        return jsonify({'error': 'Invalid JSON format', 'details': str(e), 'error_code': 400}), 400
+    if request.method == 'GET':
+        email = request.args.get('email')
+        if not email:
+            return jsonify({'error': 'Email is required', 'error_code': 400}), 400
+        data = userData.getData(email)
+        if not data:
+            return jsonify({'error': 'User not found', 'error_code': 404}), 404
+        return jsonify({'user': data, 'error_code': 200}), 200
+    elif request.method == 'POST':
+        try:
+            if request.is_json:
+                data = request.get_json()
+            else:
+                raw_data = request.data.decode('utf-8')
+                data = json.loads(raw_data)
+        except Exception as e:
+            return jsonify({'error': 'Invalid JSON format', 'details': str(e), 'error_code': 400}), 400
 
-    name = data.get('name')
-    email = data.get('email')
-    password = data.get('password')
-    if userData.getData(email):
-        return jsonify({'message': 'User already exists!', 'error_code': 409}), 409
+        name = data.get('name')
+        email = data.get('email')
+        password = data.get('password')
+        if userData.getData(email):
+            return jsonify({'message': 'User already exists!', 'error_code': 409}), 409
 
-    # Insert user data into the database
-    password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
-    userData.insertData(name, email, password_hash)
-    return jsonify({'message': 'User created successfully!', 'error_code': 201}), 201
+        # Insert user data into the database
+        password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
+        userData.insertData(name, email, password_hash)
+        return jsonify({'message': 'User created successfully!', 'error_code': 201}), 201
 
 
 @app.route("/api/login", methods=["POST"])
@@ -228,10 +255,71 @@ def delete_user():
     return jsonify({"message": "User deleted successfully!", "error_code": 200}), 200
 
 
+@app.route("/api/forgot_password", methods=["POST"])
+def forgot_password():
+    try:
+        if request.is_json:
+            data = request.get_json()
+        else:
+            raw_data = request.data.decode('utf-8')
+            data = json.loads(raw_data)
+    except Exception as e:
+        return jsonify({'error': 'Invalid JSON format', 'details': str(e), 'error_code': 400}), 400
+
+    email = data.get("email")
+    if not email:
+        return jsonify({'error': 'Email is required', 'error_code': 400}), 400
+
+    # Generate a random 6-digit code
+    code = ''.join(random.choices(string.digits, k=6))
+
+    # Update the code in the database
+    userData.setCode(email, code)
+
+    # Send the code to the user's email
+    try:
+        msg = Message(
+            subject="Your Password Reset Code",
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[email],
+            body=f"Your password reset code is: {code}"
+        )
+        mail.send(msg)
+    except Exception as e:
+        return jsonify({'error': 'Failed to send email', 'details': str(e), 'error_code': 500}), 500
+
+    return jsonify({"message": "Code sent successfully!", "error_code": 200}), 200
+
+@app.route("/api/verify_code", methods=["POST"])
+def verify_code():
+    try:
+        if request.is_json:
+            data = request.get_json()
+        else:
+            raw_data = request.data.decode('utf-8')
+            data = json.loads(raw_data)
+    except Exception as e:
+        return jsonify({'error': 'Invalid JSON format', 'details': str(e), 'error_code': 400}), 400
+
+    email = data.get("email")
+    code = data.get("code")
+
+    # Verify the code in the database
+    stored_code = userData.getCode(email)
+    if not stored_code:
+        return jsonify({'error': 'Code not found', 'error_code': 404}), 404
+    if stored_code != code:
+        return jsonify({'error': 'Invalid code', 'error_code': 401}), 401
+    return jsonify({"message": "Code verified successfully!", "error_code": 200}), 200
+    
+
 @app.errorhandler(Exception)
 def handle_exception(e):
     logging.error(f"Unhandled Exception: {str(e)}")
     return jsonify({'error': 'An unexpected error occurred', 'details': str(e), 'error_code': 500}), 500
+
+
+
 
 
 if __name__ == '__main__':

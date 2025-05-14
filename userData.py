@@ -22,6 +22,7 @@ import sqlite3
 #           )""")
 
 
+
 def getData(Email):
     conn = sqlite3.connect('userData.db')
     c = conn.cursor()
@@ -82,6 +83,37 @@ def deleteUser(email):
     conn.commit()
     conn.close()
 
+def getUserData(email):
+    conn = sqlite3.connect('userData.db')
+    c = conn.cursor()
+    c.execute("SELECT rowid,* FROM UserData WHERE Email = ?", (email,))
+    data = c.fetchone()
+    conn.close()
+    return data if data else None
+
+def setCode(email, code):
+    conn = sqlite3.connect('userData.db')
+    c = conn.cursor()
+    c.execute("UPDATE UserData SET Code = ? WHERE Email = ?", (code, email))
+    conn.commit()
+    conn.close()
+
+def getCode(email):
+    conn = sqlite3.connect('userData.db')
+    c = conn.cursor()
+    c.execute("SELECT Code FROM UserData WHERE Email = ?", (email,))
+    data = c.fetchone()
+    conn.close()
+    return data[0] if data else None
+
+
+def updateUserData(email, name):
+    conn = sqlite3.connect('userData.db')
+    c = conn.cursor()
+    c.execute("UPDATE UserData SET Name = ? WHERE Email = ?", (name, email))
+    conn.commit()
+    conn.close()
+
 def showAllJournals():
     conn = sqlite3.connect('userData.db')
     c = conn.cursor()
@@ -97,5 +129,9 @@ def showAllUsers():
     data = c.fetchall()
     conn.close()
     return data if data else None
-showAllJournals()
-showAllUsers()
+
+# insertData("Arby", "arby@gmail.com", "1234byby")
+# setCode("arby@gmail.com", 1234)
+# print(getCode("arby@gmail.com")[0])
+# print(showAllJournals())
+# print(showAllUsers())
