@@ -5,6 +5,8 @@ import sqlite3
 #     Email TEXT REQUIRED,
 #     Password TEXT REQUIRED
 #     IsLoggedIn INTEGER DEFAULT 0,
+#     Code INTEGER,
+#     Profile_Pic BLOB,
 #           )""")
 # c.execute("PRAGMA foreign_keys = ON")
 # c.execute("""CREATE TABLE Journals (
@@ -18,8 +20,9 @@ import sqlite3
 #                 Latitude REAL,
 #                 Longitude REAL,
 #                 FOREIGN KEY (Email) REFERENCES UserData(Email)
-
 #           )""")
+
+
 
 
 
@@ -114,6 +117,13 @@ def updateUserData(email, name):
     conn.commit()
     conn.close()
 
+def updateProfilePic(email, profile_pic):
+    conn = sqlite3.connect('userData.db')
+    c = conn.cursor()
+    c.execute("UPDATE UserData SET Profile_Pic = ? WHERE Email = ?", (profile_pic, email))
+    conn.commit()
+    conn.close()
+
 def showAllJournals():
     conn = sqlite3.connect('userData.db')
     c = conn.cursor()
@@ -130,8 +140,8 @@ def showAllUsers():
     conn.close()
     return data if data else None
 
-# insertData("Arby", "arby@gmail.com", "1234byby")
+insertData("Arby", "arbyabani12@gmail.com", "1234byby")
 # setCode("arby@gmail.com", 1234)
 # print(getCode("arby@gmail.com")[0])
 # print(showAllJournals())
-# print(showAllUsers())
+print(showAllUsers())
